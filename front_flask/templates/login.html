@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titulo %}Entrar{% endblock %}
+
+{# Esta es la única pantalla que se ve SIN sesión. Por eso base.html no le
+   dibuja el menú: no hay a dónde ir todavía. #}
+
+{% block contenido %}
+
+  <div class="entrada">
+
+    <h1>Entrar</h1>
+    <p class="nota">
+      El sistema pide identificarse desde la v7. Antes cualquiera que
+      abriera el navegador veía todo.
+    </p>
+
+    <form method="post" action="{{ url_for('login') }}">
+
+      <label>
+        Correo
+        <input name="email" value="{{ email or '' }}" autofocus>
+      </label>
+
+      <label>
+        Contraseña
+        {# Este SÍ es type="password", y no contradice la regla de la v5:
+           lo que se oculta es la contraseña en pantalla, no la validación.
+           Quien decide si sirve sigue siendo la API. #}
+        <input name="contrasena" type="password">
+      </label>
+
+      <button class="boton primario" type="submit">Entrar</button>
+
+    </form>
+
+    <p class="nota">
+      La contraseña <strong>no se comprueba aquí</strong>: viaja a
+      <code>POST /api/usuario/verificar-contrasena</code>, y es la API la que
+      la compara contra el hash guardado. Este front nunca ve el hash, y
+      tampoco sabe qué es bcrypt.
+    </p>
+
+  </div>
+
+{% endblock %}

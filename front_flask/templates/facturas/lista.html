@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block titulo %}Facturas{% endblock %}
+
+{# Factura tiene plantillas propias, y no las genéricas, porque NO es un CRUD:
+   la API no le da PUT, ni PATCH, ni DELETE. Forzarla dentro del patrón de las
+   otras cinco sería inventarle endpoints que no tiene. #}
+
+{% block contenido %}
+
+  <div class="encabezado">
+    <h1>Facturas</h1>
+    <a class="boton primario" href="{{ url_for('nueva_factura') }}">Nueva factura</a>
+  </div>
+
+  {% if facturas %}
+
+    <div class="tabla-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Número</th>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Vendedor</th>
+            <th class="numero">Total</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in facturas %}
+            <tr class="{{ 'anulada' if f.estado == 'anulada' }}">
+              <td><code>{{ f.numero }}</code></td>
+              <td>{{ f.fecha[:10] if f.fecha else '—' }}</td>
+              <td>{{ f.nombre_cliente }}</td>
+              <td>{{ f.nombre_vendedor }}</td>
+              <td class="numero">{{ f.total }}</td>
+              <td>
+                <span class="estado {{ f.estado }}">{{ f.estado }}</span>
+              </td>
+              <td>
+                <a class="boton" href="{{ url_for('factura', numero=f.numero) }}">Ver</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <p class="nota">
+      {{ facturas|length }} factura(s). <strong>Ninguna se puede editar ni
+      borrar</strong>: una factura emitida es un documento contable. La única
+      corrección posible es <em>anularla</em>, y la anulada sigue en la lista.
+    </p>
+
+  {% else %}
+
+    <p class="vacio">No hay facturas todavía.</p>
+
+  {% endif %}
+
+{% endblock %}

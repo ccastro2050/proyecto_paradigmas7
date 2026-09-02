@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block titulo %}{{ d.titulo }}{% endblock %}
+
+{# UNA plantilla para las cinco entidades. Lo que cambia —las columnas, el
+   título, el nombre de la llave— viene en `d`, la declaración de
+   entidades.py. Cinco copias de este archivo serían cinco sitios donde
+   arreglar el mismo error. #}
+
+{% block contenido %}
+
+  <div class="encabezado">
+    <h1>{{ d.titulo }}</h1>
+    <a class="boton primario" href="{{ url_for('crear', entidad=d.nombre) }}">
+      Crear
+    </a>
+  </div>
+
+  {% if filas %}
+
+    <div class="tabla-scroll">
+      <table>
+        <thead>
+          <tr>
+            {% for campo, etiqueta in d.columnas %}
+              <th>{{ etiqueta }}</th>
+            {% endfor %}
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fila in filas %}
+            <tr>
+              {% for campo, etiqueta in d.columnas %}
+                <td>
+                  {% if campo == d.llave %}
+                    <code>{{ fila[campo] }}</code>
+                  {% else %}
+                    {{ fila[campo] if fila[campo] is not none else '—' }}
+                  {% endif %}
+                </td>
+              {% endfor %}
+              <td class="acciones">
+                <a class="boton"
+                   href="{{ url_for('editar', entidad=d.nombre, llave=fila[d.llave]) }}">
+                  Editar
+                </a>
+                {# Eliminar va por POST, nunca por enlace. #}
+                <form method="post"
+                      action="{{ url_for('eliminar', entidad=d.nombre, llave=fila[d.llave]) }}"
+                      onsubmit="return confirm('¿Eliminar el registro {{ fila[d.llave] }}?')">
+                  <button class="boton peligro" type="submit">Eliminar</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <p class="nota">{{ filas|length }} registro(s).</p>
+
+  {% else %}
+
+    {# La API respondió 204: la tabla está vacía. No es un error, y por eso
+       este mensaje es gris y no rojo. #}
+    <p class="vacio">
+      No hay registros todavía. La API respondió <strong>204</strong>, que
+      significa &laquo;funcionó, y no hay nada que devolver&raquo;.
+    </p>
+
+  {% endif %}
+
+{% endblock %}

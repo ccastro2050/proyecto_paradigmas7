@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block titulo %}Nueva factura{% endblock %}
+
+{% block contenido %}
+
+  <div class="encabezado">
+    <h1>Nueva factura</h1>
+    <a class="boton" href="{{ url_for('facturas') }}">Volver</a>
+  </div>
+
+  {% if not clientes or not vendedores or not productos %}
+    <p class="aviso error">
+      Para facturar hacen falta clientes, vendedores y productos. Cree
+      primero lo que falte.
+    </p>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('nueva_factura') }}">
+
+    {# EL MAESTRO: quién compra y quién vende. Los dos se ELIGEN de lo que
+       existe — son llaves foráneas, y las opciones salen de la API. #}
+    <h2>El maestro</h2>
+
+    <label>
+      Cliente
+      <select name="fkidcliente">
+        <option value="">— elija —</option>
+        {% for c in clientes %}
+          <option value="{{ c.id }}">
+            {{ c.id }} — {{ c.fkcodpersona }}{% if c.fkcodempresa %} ({{ c.fkcodempresa }}){% endif %}
+          </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Vendedor
+      <select name="fkidvendedor">
+        <option value="">— elija —</option>
+        {% for v in vendedores %}
+          <option value="{{ v.id }}">{{ v.id }} — carnet {{ v.carnet }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    {# EL DETALLE: los renglones. Van como listas paralelas —codigo[i] con
+       cantidad[i]— y el front solo manda los que tengan las dos cosas.
+       Cinco renglones fijos: suficientes para la versión, y sin una línea de
+       JavaScript para agregar filas. #}
+    <h2>El detalle</h2>
+
+    <p class="nota">
+      Elija hasta cinco productos con su cantidad. Los renglones vacíos se
+      descartan; <strong>al menos uno debe ir diligenciado</strong>, y eso lo
+      exige la API (<code>min_length=1</code>), no esta pantalla.
+    </p>
+
+    <div class="tabla-scroll">
+      <table class="renglones">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Cantidad</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for i in range(5) %}
+            <tr>
+              <td>
+                <select name="codigo">
+                  <option value="">— ninguno —</option>
+                  {% for p in productos %}
+                    <option value="{{ p.codigo }}">
+                      {{ p.codigo }} — {{ p.nombre }} (stock {{ p.stock }})
+                    </option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td>
+                {# type="text" otra vez: que sea la API la que rechace una
+                   cantidad inválida, y que el 422 se vea. #}
+                <input name="cantidad" value="">
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <button class="boton primario" type="submit">Crear factura</button>
+
+    <p class="nota">
+      <strong>Aquí no se suma nada.</strong> El front manda el cliente, el
+      vendedor y los renglones; la API los inserta en <em>una sola
+      transacción</em> y un trigger de la base calcula el total. Si algo del
+      detalle falla, no queda media factura: se deshace todo.
+    </p>
+
+  </form>
+
+{% endblock %}

@@ -1,0 +1,145 @@
+# ==============================================================
+# Proyecto Paradigmas — versión 4
+#
+#                                                    ┌→ PostgreSQL (:15439)
+#   FRONT (Flask, :8023) → API FACTURAS (FastAPI, :8021) ─┼→ MariaDB   (:13338)
+#                                                    └→ SQL Server (:11438)
+#
+#   El front NO tiene línea hacia ningún motor: esa es la v5.
+#                                       el interruptor: DB_PROVIDER
+#
+# Uso:  docker compose up -d --build      (un solo comando)
+#   La API habla con PostgreSQL por defecto; para cambiar de motor
+#   SIN tocar código:  $env:DB_PROVIDER="mariadb"  (o "sqlserver")
+#                      docker compose up -d api-facturas
+# Este archivo CRECE con las versiones: v5 suma el front Flask.
+# ==============================================================
+services:
+
+  # --- Base de datos: PostgreSQL 16 con bdfacturas completa ---
+  postgres:
+    restart: unless-stopped   # si el PC se reinicia, este servicio revive con Docker
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: bdfacturas_postgres_local
+      POSTGRES_USER: paradigmas
+      POSTGRES_PASSWORD: paradigmas123
+    volumes:
+      - pgdata:/var/lib/postgresql/data                          # los datos sobreviven a down/reinicios
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro    # se ejecuta solo con volumen vacío
+    ports:
+      - "15439:5432"     # puerto en su PC (para DBeaver/pgAdmin opcional)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paradigmas -d bdfacturas_postgres_local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # --- MariaDB 11 — el SEGUNDO motor (v3): la misma bdfacturas ---
+  # También se inicializa solo: el script montado corre la PRIMERA vez
+  # (volumen vacío) — mismas semillas y mismos ids que PostgreSQL.
+  mariadb:
+    restart: unless-stopped   # si el PC se reinicia, este servicio revive con Docker
+    image: mariadb:11
+    environment:
+      MARIADB_ROOT_PASSWORD: paradigmas123
+    volumes:
+      - mariadbdata:/var/lib/mysql                                        # los datos sobreviven a down
+      - ./db/init_mariadb.sql:/docker-entrypoint-initdb.d/init_mariadb.sql:ro
+    ports:
+      - "13338:3306"     # puerto en su PC (para HeidiSQL/DBeaver opcional)
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # --- SQL Server 2022 — el TERCER motor (v4). Requiere ~2 GB de RAM ---
+  sqlserver:
+    restart: unless-stopped   # si el PC se reinicia, este servicio revive con Docker
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"                       # aceptar la licencia (obligatorio)
+      MSSQL_SA_PASSWORD: "Paradigmas123!"    # clave del superusuario 'sa'
+      MSSQL_PID: Developer                   # edición gratuita para desarrollo
+    volumes:
+      - mssqldata:/var/opt/mssql
+    ports:
+      - "11438:1433"     # puerto en su PC (para SSMS/SQLTools opcional)
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' -b"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 30s   # margen de gracia: SQL Server tarda en arrancar
+
+  # --- Inicializador de SQL Server (v4): el CONTRASTE didáctico ---
+  # PostgreSQL y MariaDB ejecutan solos los scripts montados; SQL Server
+  # NO — este contenedor se conecta, corre el script UNA vez y muere.
+  sqlserver-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      MSSQL_SA_PASSWORD: "Paradigmas123!"
+    volumes:
+      - ./db:/scripts:ro
+    entrypoint: ["/bin/bash", "/scripts/init_sqlserver.sh"]
+    restart: "no"
+
+  # --- API Facturas (v1: producto · v2: +5 entidades · v3/v4: tri-motor) ---
+  api-facturas:
+    build: ./api_facturas
+    volumes:
+      - ./api_facturas:/app        # el código se monta: guardar un .py recarga solo
+    command: uvicorn main:app --host 0.0.0.0 --port 8021 --reload
+    restart: unless-stopped
+    ports:
+      - "8021:8021"                # http://localhost:8021/docs
+    environment:
+      # Entre contenedores se usa el NOMBRE del servicio (postgres), no localhost
+      DB_POSTGRES: postgresql+asyncpg://paradigmas:paradigmas123@postgres:5432/bdfacturas_postgres_local
+      # v3 — la cadena del SEGUNDO motor:
+      DB_MARIADB: mysql+aiomysql://root:paradigmas123@mariadb:3306/bdfacturas_mariadb_local
+      # v4 — la cadena del TERCER motor (aioodbc necesita el nombre del
+      # driver ODBC instalado en la imagen — ver api_facturas/Dockerfile):
+      DB_SQLSERVER: mssql+aioodbc://sa:Paradigmas123!@sqlserver:1433/bdfacturas_sqlserver_local?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes
+      # v3 — EL INTERRUPTOR: a qué motor le habla la API. Lee la variable
+      # DB_PROVIDER de su terminal; si no existe, postgres. Cambiar de
+      # motor = recrear SOLO este contenedor (segundos):
+      #   $env:DB_PROVIDER="mariadb"; docker compose up -d api-facturas
+      DB_PROVIDER: ${DB_PROVIDER:-postgres}
+    depends_on:
+      postgres:
+        condition: service_healthy   # arranca cuando la BD RESPONDE, no cuando existe
+      mariadb:
+        condition: service_healthy   # ...y cuando el segundo motor responde
+      sqlserver-init:
+        condition: service_completed_successfully
+        # ↑ v4: y cuando el inicializador de SQL Server TERMINÓ BIEN
+
+  # --- FRONT Flask (v5: la capa de presentación NACE) -------------------
+  # Es un contenedor APARTE de la API a propósito: dos procesos distintos,
+  # con dependencias distintas, que se reinician por separado. El front NO
+  # tiene acceso a ningún motor de base de datos — ni siquiera conoce sus
+  # nombres de servicio. Todo lo pide por HTTP a api-facturas.
+  front-flask:
+    build: ./front_flask
+    volumes:
+      - ./front_flask:/app         # el código se monta: guardar un .py recarga solo
+    restart: unless-stopped
+    ports:
+      - "8023:8023"                # http://localhost:8023
+    environment:
+      # El NOMBRE del servicio, no localhost: dentro del contenedor del front,
+      # localhost sería el front mismo.
+      API_FACTURAS_URL: http://api-facturas:8021
+      CLAVE_SESION: Paradigmas123!Sesion
+    depends_on:
+      - api-facturas
+
+volumes:
+  pgdata:
+  mariadbdata:      # v3: la "memoria" del segundo motor
+  mssqldata:        # v4: la "memoria" del tercero

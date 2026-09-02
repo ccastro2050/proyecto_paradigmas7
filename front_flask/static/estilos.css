@@ -1,0 +1,146 @@
+/* estilos.css — la presentación, escrita a mano y sin framework.
+
+   La v5 no carga Bootstrap ni Tailwind a propósito: son 40 líneas de CSS y
+   así no hay una dependencia que explicar antes de explicar lo que importa,
+   que es la separación entre el front y la API. */
+
+:root {
+  --tinta: #1c2430;
+  --suave: #5d6b7a;
+  --borde: #d8dee6;
+  --fondo: #f5f7fa;
+  --acento: #1f5f8b;
+  --error: #a4262c;
+  --exito: #1d6f42;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--tinta);
+  background: var(--fondo);
+}
+
+.contenedor { max-width: 900px; margin: 0 auto; padding: 0 20px; }
+
+header { background: var(--tinta); color: #fff; }
+.barra { display: flex; align-items: baseline; gap: 16px; padding: 14px 20px; }
+.marca { color: #fff; font-weight: 700; font-size: 1.15rem; text-decoration: none; }
+.version { color: #9fb0c0; font-size: .85rem; }
+
+main { padding: 28px 20px 40px; }
+
+.encabezado { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+h1 { font-size: 1.5rem; margin: 0 0 4px; }
+
+/* --- Avisos: lo que la API respondió, en palabras --- */
+.aviso { padding: 10px 14px; border-radius: 6px; border-left: 4px solid; margin: 0 0 10px; }
+.aviso.error { background: #fdf2f2; border-color: var(--error); color: var(--error); }
+.aviso.exito { background: #f1f8f4; border-color: var(--exito); color: var(--exito); }
+
+/* --- Tabla --- */
+table { width: 100%; border-collapse: collapse; background: #fff; margin-top: 18px;
+        border: 1px solid var(--borde); border-radius: 8px; overflow: hidden; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--borde); }
+th { background: #eef2f6; font-size: .85rem; text-transform: uppercase; letter-spacing: .03em; }
+tr:last-child td { border-bottom: none; }
+.numero { text-align: right; font-variant-numeric: tabular-nums; }
+code { background: #eef2f6; padding: 1px 6px; border-radius: 4px; }
+
+.acciones { display: flex; gap: 8px; align-items: center; }
+.acciones form { margin: 0; }
+
+/* --- Botones --- */
+.boton { display: inline-block; padding: 7px 14px; border-radius: 6px; cursor: pointer;
+         border: 1px solid var(--borde); background: #fff; color: var(--tinta);
+         font: inherit; font-size: .9rem; text-decoration: none; }
+.boton:hover { background: #eef2f6; }
+.boton.primario { background: var(--acento); border-color: var(--acento); color: #fff; }
+.boton.primario:hover { filter: brightness(1.1); }
+.boton.peligro { color: var(--error); border-color: #e8c3c5; }
+.boton.peligro:hover { background: #fdf2f2; }
+
+/* --- Formulario --- */
+form { background: #fff; border: 1px solid var(--borde); border-radius: 8px;
+       padding: 20px; margin-top: 18px; max-width: 520px; }
+label { display: block; margin-bottom: 14px; font-weight: 600; font-size: .9rem; }
+input { display: block; width: 100%; margin-top: 5px; padding: 8px 10px; font: inherit;
+        font-weight: 400; border: 1px solid var(--borde); border-radius: 6px; }
+input:focus { outline: 2px solid var(--acento); outline-offset: 1px; }
+input[readonly] { background: #eef2f6; color: var(--suave); }
+.pareja { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.nota, .vacio { color: var(--suave); font-size: .9rem; }
+.vacio { background: #fff; border: 1px dashed var(--borde); border-radius: 8px;
+         padding: 24px; text-align: center; margin-top: 18px; }
+
+footer { border-top: 1px solid var(--borde); padding: 16px 20px 30px; }
+footer p { color: var(--suave); font-size: .85rem; margin: 0; }
+
+/* ---------------------------------------------------------------
+   v6: el menú, la ficha de la factura y los estados
+   --------------------------------------------------------------- */
+
+.barra { flex-wrap: wrap; }
+.barra nav { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
+.barra nav a { color: #cfdae4; text-decoration: none; padding: 4px 10px;
+               border-radius: 5px; font-size: .9rem; }
+.barra nav a:hover { background: rgba(255,255,255,.12); color: #fff; }
+
+h2 { font-size: 1.1rem; margin: 24px 0 8px; }
+
+/* Las tablas anchas se desplazan SOLAS, sin arrastrar la página entera */
+.tabla-scroll { overflow-x: auto; }
+
+select { display: block; width: 100%; margin-top: 5px; padding: 8px 10px;
+         font: inherit; font-weight: 400; background: #fff;
+         border: 1px solid var(--borde); border-radius: 6px; }
+select:focus { outline: 2px solid var(--acento); outline-offset: 1px; }
+
+.ayuda { display: block; margin-top: 4px; font-weight: 400; font-size: .82rem;
+         color: var(--suave); }
+.ayuda.alerta { color: var(--error); }
+.opcional { font-weight: 400; color: var(--suave); font-size: .85rem; }
+
+/* La ficha del maestro */
+.ficha { background: #fff; border: 1px solid var(--borde); border-radius: 8px;
+         padding: 16px 20px; margin-top: 18px; }
+.ficha dl { display: grid; grid-template-columns: max-content 1fr;
+            gap: 6px 18px; margin: 0; }
+.ficha dt { font-weight: 600; color: var(--suave); font-size: .85rem; }
+.ficha dd { margin: 0; }
+.tenue { color: var(--suave); font-size: .85rem; }
+
+/* El estado de una factura */
+.estado { display: inline-block; padding: 2px 9px; border-radius: 999px;
+          font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }
+.estado.activa  { background: #e6f4ec; color: var(--exito); }
+.estado.anulada { background: #f4e6e7; color: var(--error); }
+tr.anulada td { opacity: .55; }
+.aviso.anulada-nota { background: #f9f0f0; border-color: var(--error);
+                      color: var(--error); }
+
+tfoot th { background: #eef2f6; }
+table.renglones { background: #fff; }
+table.renglones td { padding: 8px; }
+table.renglones select, table.renglones input { margin-top: 0; }
+
+form h2:first-of-type { margin-top: 0; }
+
+/* ---------------------------------------------------------------
+   v7: la sesión
+   --------------------------------------------------------------- */
+
+.sesion { color: #cfdae4; font-size: .85rem; display: flex;
+          align-items: center; gap: 10px; margin-left: auto; }
+.sesion .roles { color: #8fa3b5; font-size: .78rem; }
+.sesion .salir { color: #fff; text-decoration: none; padding: 3px 10px;
+                 border: 1px solid rgba(255,255,255,.3); border-radius: 5px; }
+.sesion .salir:hover { background: rgba(255,255,255,.15); }
+
+/* La pantalla de entrada: sin menú, centrada y angosta */
+.entrada { max-width: 420px; margin: 40px auto; }
+.entrada h1 { margin-bottom: 6px; }
+.entrada form { max-width: none; }

@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+sqlalchemy[asyncio]
+asyncpg
+greenlet
+pydantic
+aiomysql
+aioodbc
+
+# v7 — para cifrar y comprobar contraseñas
+bcrypt==4.*
+# v7 — EmailStr de Pydantic lo necesita para validar el email
+email-validator==2.*

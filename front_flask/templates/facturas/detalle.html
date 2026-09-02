@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block titulo %}Factura {{ f.numero }}{% endblock %}
+
+{% block contenido %}
+
+  <div class="encabezado">
+    <h1>Factura {{ f.numero }}</h1>
+    <a class="boton" href="{{ url_for('facturas') }}">Volver</a>
+  </div>
+
+  <div class="ficha">
+    <dl>
+      <dt>Fecha</dt>      <dd>{{ f.fecha[:19].replace('T', ' ') if f.fecha else '—' }}</dd>
+      <dt>Cliente</dt>    <dd>{{ f.nombre_cliente }} <span class="tenue">(id {{ f.fkidcliente }})</span></dd>
+      <dt>Vendedor</dt>   <dd>{{ f.nombre_vendedor }} <span class="tenue">(id {{ f.fkidvendedor }})</span></dd>
+      <dt>Estado</dt>     <dd><span class="estado {{ f.estado }}">{{ f.estado }}</span></dd>
+    </dl>
+  </div>
+
+  <h2>Detalle</h2>
+
+  {# EL DETALLE de la relación maestro-detalle: la factura y sus renglones
+     llegan JUNTOS en una sola respuesta de la API. El front no hizo dos
+     consultas ni cruzó nada: la API resolvió el join. #}
+  <div class="tabla-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Producto</th>
+          <th class="numero">Cantidad</th>
+          <th class="numero">Valor unitario</th>
+          <th class="numero">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in f.productos %}
+          <tr>
+            <td><code>{{ r.codigo_producto }}</code></td>
+            <td>{{ r.nombre_producto }}</td>
+            <td class="numero">{{ r.cantidad }}</td>
+            <td class="numero">{{ r.valorunitario }}</td>
+            <td class="numero">{{ r.subtotal }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th colspan="4" class="numero">Total</th>
+          <th class="numero">{{ f.total }}</th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <p class="nota">
+    <strong>Ese total no lo sumó esta pantalla.</strong> Lo calculó un
+    <em>trigger</em> en la base de datos cuando se insertaron los renglones, y
+    la API lo devolvió ya hecho. Si el front lo recalculara, habría dos
+    respuestas posibles a la misma pregunta &mdash; y algún día no coincidirían.
+  </p>
+
+  {% if f.estado != 'anulada' %}
+
+    <form method="post" action="{{ url_for('anular', numero=f.numero) }}"
+          onsubmit="return confirm('¿Anular la factura {{ f.numero }}? No se borra: queda registrada como anulada.')">
+      <button class="boton peligro" type="submit">Anular esta factura</button>
+      <p class="nota">
+        <strong>Anular no es borrar.</strong> La factura se queda donde está,
+        con su detalle intacto, y cambia de estado. Por eso la API no ofrece
+        <code>DELETE /api/factura</code>: <strong>esa ausencia es la regla
+        contable convertida en contrato</strong>.
+      </p>
+    </form>
+
+  {% else %}
+
+    <p class="aviso anulada-nota">
+      Esta factura está <strong>anulada</strong>. Sigue aquí, con su detalle
+      completo, porque un documento contable no se borra: se marca.
+    </p>
+
+  {% endif %}
+
+{% endblock %}

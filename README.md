@@ -1,0 +1,245 @@
+# Proyecto Paradigmas — construcción por versiones
+
+Proyecto del curso **Paradigmas de Programación** (USB Medellín). Aquí NO se
+descarga un sistema terminado: **se construye un sistema real por versiones**,
+guiado por especificaciones. El repositorio siempre contiene la **versión en
+curso, funcionando** — usted la ejecuta, la estudia y luego la **reconstruye
+desde cero** en su propio proyecto.
+
+> 🐳 Esta variante corre sobre **Docker**. Para las salas SIN Docker existe
+> el repositorio gemelo
+> [proyecto_paradigmas_sin_docker](https://github.com/ccastro2050/proyecto_paradigmas_sin_docker)
+> (PostgreSQL instalado + venv) — misma API, misma spec, otra infraestructura.
+
+---
+
+## 1. Cómo le trabaja el estudiante (léame primero)
+
+### Qué necesita instalado (una sola vez)
+
+| Herramienta | Para qué |
+|---|---|
+| **Git** | Clonar el repositorio y traer versiones nuevas |
+| **Docker Desktop** | La base de datos corre en un contenedor (no se instala PostgreSQL) |
+| **Python 3.12** | El lenguaje de la API |
+| **VS Code** | El editor — y su terminal integrada (*Terminal → New Terminal*) |
+
+### Primera vez: cargar y EJECUTAR la versión (un solo comando)
+
+En la terminal integrada de VS Code (*Terminal → New Terminal*, PowerShell):
+
+> ⚠️ **ANTES de clonar — solo si usted ya corrió OTRO proyecto de estos
+> cursos en este PC:** puede quedar un contenedor viejo encendido ocupando
+> el puerto 8021 (pasa al reiniciar el PC: la API vieja revive sin su
+> base de datos y "secuestra" el puerto — el contenedor huérfano). El
+> síntoma: Swagger abre, pero todo responde 500 con *"No address
+> associated with hostname"*, y usted cree que el error es de ESTE
+> proyecto cuando en realidad está hablando con el viejo. Verifíquelo y
+> apáguelo primero:
+>
+> ```powershell
+> docker ps --filter "name=proyecto_"
+> # ↑ VERIFICAR: ¿aparece algún proyecto del curso todavía encendido?
+> docker ps --filter "name=proyecto_" -q | ForEach-Object { docker stop $_ }
+> # ↑ LIMPIAR: apaga TODOS los contenedores del curso de una sola vez
+> ```
+>
+> La limpieza no borra nada (los datos quedan en sus volúmenes) y
+> funciona aunque ya no tenga la carpeta vieja. También sirve el botón
+> Stop de Docker Desktop. Solo entonces continúe.
+
+```powershell
+git clone https://github.com/ccastro2050/proyecto_paradigmas4.git
+cd proyecto_paradigmas4
+docker compose up -d --build
+```
+
+**Eso es todo.** La primera vez tarda unos minutos (descarga imágenes). Al
+terminar quedan corriendo los tres motores, la API y **el front**:
+
+| Qué | Dónde |
+|---|---|
+| **EL FRONT** (lo que ve el usuario) | http://localhost:8023 |
+| **API Facturas — Swagger** (probar los endpoints) | http://localhost:8021/docs |
+| Diagnóstico | http://localhost:8021/ |
+| PostgreSQL (para DBeaver/pgAdmin, opcional) | `localhost:15439` · `paradigmas`/`paradigmas123` |
+
+Pruebe en Swagger: PUT con solo `{"stock": 99}` → 422; el mismo body en
+PATCH → 200. Esa diferencia es parte de lo que enseña la v1.
+
+Y desde la v5 **esa misma pareja se ve sin Swagger**: entre a
+http://localhost:8023, edite un producto, bórrele el nombre y oprima los
+dos botones. El de PUT responde 422; el de PATCH, con el **mismo
+formulario**, guarda.
+
+### Los días siguientes (volver a encender)
+
+```powershell
+docker compose up -d        # segundos; los datos se conservan
+```
+
+### Cuando hay cambios
+
+| Qué cambió | Qué hacer |
+|---|---|
+| **Usted edita un `.py`** | **Nada** — el código está montado como volumen y `--reload` reinicia la API sola al guardar |
+| **El profesor publicó una versión nueva** | `git pull` y `docker compose up -d --build` |
+| **Cambió `requirements.txt` o un `Dockerfile`** | `docker compose up -d --build` (reconstruye la imagen) |
+| **Quiere resetear la BD** a sus datos originales | `docker compose down -v` y luego `docker compose up -d` (⚠️ borra los datos) |
+| **Apagar todo** | `docker compose down` (los datos se conservan) |
+
+### Y ahora, SU trabajo: reconstruirla desde cero
+
+Ejecutar la versión del repo es solo el punto de partida. Lo que se evalúa es
+**reconstruirla usted mismo, en una carpeta propia (fuera del clon)**,
+siguiendo las especificaciones — con o sin ayuda de IA:
+
+> 🤖 **[Guía para construir la versión con IA](docs/GUIA_IA.md)** — los dos
+> caminos con su prompt listo para copiar: **chat web** (Gemini, DeepSeek,
+> ChatGPT) e **IDE agéntico** (Antigravity, Cursor, Claude Code).
+
+### Conceptos resumidos (los que acaba de usar)
+
+| Concepto | En una frase |
+|---|---|
+| **Clonar** | Descargar el repositorio con su historial; `git pull` trae lo nuevo |
+| **Contenedor** | BD y API corren en "cajas" de Docker: nada que instalar, se borran y recrean sin miedo |
+| **docker compose** | UN archivo declara todo el sistema y UN comando lo levanta (`up -d`) |
+| **Volumen** | Donde viven los datos: `down` los conserva, `down -v` los borra (reset) |
+| **--reload** | El código está montado en el contenedor: guardar un archivo recarga la API sola |
+| **Swagger (/docs)** | La documentación interactiva: probar la API desde el navegador |
+| **Spec kit** | Los documentos que dicen QUÉ/CÓMO/EN QUÉ ORDEN — la fuente de verdad |
+| **Versión / tag** | Un incremento cerrado y verificado (`v1`, `v2`, …): se avanza solo en verde |
+
+> Detalle de todos estos conceptos: [docs/CONCEPTOS_DOCKER.md](docs/CONCEPTOS_DOCKER.md).
+
+---
+
+## 2. Estructura del repositorio
+
+Qué es cada carpeta y cada archivo, y para qué sirve:
+
+```
+proyecto_paradigmas4/
+├── docker-compose.yml           # TODO el sistema declarado: PostgreSQL + API
+│                                #   (el "un solo comando" del proyecto)
+├── db/
+│   └── init.sql                 # Crea bdfacturas COMPLETA (12 tablas, triggers, datos).
+│                                #   PostgreSQL lo ejecuta solo la PRIMERA vez (volumen vacío)
+│
+├── backupdb/                    # Respaldos (dumps) de la BD — su README explica
+│                                #   cómo hacer el backup y cómo restaurarlo
+│
+├── front_flask/                 # EL FRONT — Flask + Jinja2 (puerto 8023)
+│   ├── Dockerfile               # Su PROPIA imagen: dos procesos, no uno
+│   ├── app.py                   # Las vistas: 4 rutas GENÉRICAS + las de factura
+│   ├── entidades.py             # v6: QUÉ tiene cada entidad + v7: qué rol la ve
+│   ├── templates/login.html     # v7: la ÚNICA pantalla que se ve sin sesión
+│   ├── cliente_api.py           # La capa de datos del front: el ÚNICO que habla HTTP
+│   ├── templates/               # base.html (con el menú) + entidades/ + facturas/
+│   └── static/estilos.css       # La presentación, a mano y sin framework
+│                                #   NO recibe ninguna cadena de conexión: el front
+│                                #   NO PUEDE llegar a la base ni por accidente
+│
+├── api_facturas/                # LA API DE LA v1 — FastAPI (puerto 8021)
+│   ├── Dockerfile               # Su imagen: python:3.12-slim + requirements
+│   ├── requirements.txt         # Dependencias exactas (fastapi, uvicorn, sqlalchemy, asyncpg)
+│   ├── main.py                  # Crea la app, configura CORS y registra el router
+│   ├── controllers/             # Capa 1 — HTTP (v7: + usuario y verificar-contrasena)
+│   ├── models/                  # Pydantic: un modelo por verbo (Producto,
+│   │                            #   ProductoReemplazo, ProductoActualizar) → los 422
+│   ├── servicios/               # Capa 2 — negocio (v7: bcrypt vive AQUÍ, no en otra capa)
+│   │   └── abstracciones/       #   la interfaz (typing.Protocol) que la capa 1 conoce
+│   ├── repositorios/            # Capa 3 — datos: SQL asíncrono contra PostgreSQL
+│   │   └── abstracciones/       #   la interfaz que la capa 2 conoce
+│   └── pruebas/                 # prueba_capas.py — el criterio 6: el servicio
+│                                #   con un repositorio FALSO, sin PostgreSQL
+│
+├── postman/                     # La colección de la API (13 peticiones en orden
+│                                #   didáctico) — alternativa a Swagger, con README
+│
+├── docs/
+│   ├── spec_kit/                # LAS ESPECIFICACIONES: constitución permanente +
+│   │                            #   una carpeta de specs por versión (v1, v2, …)
+│   ├── GUIA_IA.md               # Cómo reconstruir la versión desde 0 con ayuda de una IA
+│   ├── FLUJO_DE_UNA_PETICION.md # Dónde "está" el GET y el viaje de una petición por capas
+│   ├── PARADIGMA_POO.md         # Material conceptual: POO (con Pydantic), SOLID+capas,
+│   ├── SOLID_CAPAS_PATRONES.md         #   ACID, Docker y SDD (un .md por tema)
+│   ├── PRINCIPIOS_ACID.md       #
+│   ├── CONCEPTOS_DOCKER.md      #
+│   ├── SDD_SPECKIT.md           #
+│   ├── TUTORIAL_PGADMIN.md      # Tutoriales de administración de la BD, paso a paso
+│   ├── TUTORIAL_VSCODE_SQLTOOLS.md  #   con capturas reales
+│   └── img_pgadmin/ img_sqltools/   # Las capturas de esos tutoriales
+│
+├── .gitignore / .gitattributes  # Higiene del repo (ignora .venv, .session.sql, EOL)
+└── README.md                    # Este archivo
+```
+
+La regla de lectura: **el sistema vive en `docker-compose.yml`**, la API
+vive en `api_facturas/` (una carpeta por capa, cada una con su interfaz en
+`abstracciones/`), y **todo lo que explica** vive en `docs/`. Cuando lleguen
+las versiones siguientes, aquí aparecerán más carpetas de componentes (y el
+compose crecerá con ellas). El sistema completo de referencia está en la
+rama `sistema-completo`.
+
+## 3. La ruta de versiones
+
+```
+v1  api_facturas: CRUD de producto, solo PostgreSQL   (cerrada: tag v1)
+v2  más tablas: persona, empresa, cliente, vendedor y
+    factura maestro-detalle vía SPs   (cerrada: tag v2)
+v3  segundo motor (MariaDB) — nace la fábrica
+    y el interruptor DB_PROVIDER   (cerrada: tag v3)
+v4  tercer motor (SQL Server) + docker compose
+    completo   (cerrada: tag v4)
+v5  el FRONT nace: Flask consume la API por HTTP
+    y no toca la base   (cerrada: tag v5)
+v6  el front cubre LAS SEIS entidades: lo que se
+    repite se generaliza, y la factura NO cabe
+    en ese patrón   (cerrada: tag v6)
+v7  el sistema PIDE IDENTIFICARSE: la API estrena
+    usuario con contraseñas cifradas, y el front
+    gana login y menú por rol   ← USTED ESTÁ AQUÍ
+```
+
+La regla del juego: la **constitución** es permanente, cada versión tiene su
+propia spec, y una versión está TERMINADA solo cuando pasa sus criterios de
+aceptación (se cierra con tag). Detalle completo:
+**[mapa de versiones](docs/spec_kit/versiones/0_mapa_versiones.md)**.
+
+## 4. Las especificaciones de la versión actual (v7)
+
+| Documento | Qué contiene |
+|---|---|
+| [Constitución](docs/spec_kit/1_constitution.md) | Las reglas permanentes del proyecto |
+| [2_spec.md](docs/spec_kit/versiones/v7_autenticacion/2_spec.md) | QUÉ construir y los **8 criterios de aceptación** |
+| [3_plan.md](docs/spec_kit/versiones/v7_autenticacion/3_plan.md) | CÓMO: dónde vive bcrypt, y por qué el sitio es obvio |
+| [4_research.md](docs/spec_kit/versiones/v7_autenticacion/4_research.md) | Las decisiones: bcrypt, sesión y **por qué el menú no protege** |
+| [5_data_model.md](docs/spec_kit/versiones/v7_autenticacion/5_data_model.md) | Las cinco tablas que llevaban seis versiones dormidas |
+| [6_contracts.md](docs/spec_kit/versiones/v7_autenticacion/6_contracts.md) | Los endpoints nuevos y las pantallas |
+| [7_quickstart.md](docs/spec_kit/versiones/v7_autenticacion/7_quickstart.md) | Arranque, smoke test y las credenciales de prueba |
+| [8_tasks.md](docs/spec_kit/versiones/v7_autenticacion/8_tasks.md) | Las 8 fases, cada una con su verificación |
+| [9_checklist.md](docs/spec_kit/versiones/v7_autenticacion/9_checklist.md) | **La compuerta 3**: se firma ANTES de programar |
+| [GUIA_IA7.md](docs/spec_kit/versiones/v7_autenticacion/GUIA_IA7.md) | Construir la versión con IA, con el prompt listo |
+
+## 5. Material conceptual del curso
+
+| Documento | Qué cubre |
+|---|---|
+| [SDD y Spec Kit](docs/SDD_SPECKIT.md) | La metodología con la que se trabaja este curso: la spec manda sobre el código |
+| [Calidad de las pruebas](docs/CALIDAD_DE_PRUEBAS.md) | Cobertura, la métrica CRAP y mutation testing: cómo saber si sus pruebas de verdad protegen — y por qué hoy es reto opcional, no alcance del proyecto |
+| [Programación asincrónica](docs/PROGRAMACION_ASINCRONICA.md) | Qué resuelve el async/await en la web, qué se daña sin él (con diagramas), y cómo se ve en el código de este proyecto |
+| [El paradigma P.O.O.](docs/PARADIGMA_POO.md) | Qué es un paradigma, los 4 pilares, la P.O.O. de Python (`Protocol`, duck typing) y **Pydantic** como clases que validan datos |
+| [El flujo de una petición](docs/FLUJO_DE_UNA_PETICION.md) | Dónde "está" el GET (el decorador), quién captura el body del POST (Pydantic) y el viaje completo capa por capa — con la pareja PUT/PATCH para probar |
+| [Colección de Postman](postman/README.md) | Los 13 endpoints de la v1 listos para importar y probar con clics — incluida la pareja PUT=422 vs PATCH=200 |
+| [SOLID, capas y patrones de diseño](docs/SOLID_CAPAS_PATRONES.md) | Los 5 principios y las capas — y en qué versión se demuestra cada uno |
+| [Principios ACID](docs/PRINCIPIOS_ACID.md) | Las 4 garantías transaccionales, por qué una facturación las exige, y el contraste con BASE |
+| [Conceptos de Docker](docs/CONCEPTOS_DOCKER.md) | Imagen, contenedor, volumen, compose (con el `docker-compose.yml` del proyecto explicado línea por línea) y por qué NO se necesita Kubernetes |
+| [Tutorial pgAdmin](docs/TUTORIAL_PGADMIN.md) | Administrar la BD paso a paso: conectarse, explorar, editar datos (y verlos cambiar en la API), Query Tool y ERD |
+| [Tutorial SQLTools (VS Code)](docs/TUTORIAL_VSCODE_SQLTOOLS.md) | La BD sin salir del editor: extensión + driver, conexión, explorar, SELECT/INSERT/DELETE y ejecutar una sentencia entre varias |
+
+---
+
+*Proyecto Paradigmas · USB Med · La rama `sistema-completo` conserva el sistema
+de referencia terminado (consultarla es decisión del profesor, no un atajo).*

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Facturas{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
+</head>
+<body>
+
+  <header>
+    <div class="contenedor barra">
+      <a class="marca" href="{{ url_for('inicio') }}">Facturas</a>
+      {# v7: sin sesión no hay menú — desde afuera solo existe /login. #}
+      {% if usuario %}
+        <nav>
+          {# El menú sale de entidades.py, filtrado por los ROLES de quien
+             entró. Ojo: esto DIBUJA, no protege. Ver 4_research §D3. #}
+          {% for e in entidades %}
+            <a href="{{ url_for('listar', entidad=e.nombre) }}">{{ e.titulo }}</a>
+          {% endfor %}
+          {# Factura va aparte porque NO es un CRUD: tiene rutas propias. #}
+          <a href="{{ url_for('facturas') }}">Facturas</a>
+        </nav>
+        <span class="sesion">
+          {{ usuario }}
+          <span class="roles">{{ roles|join(' · ') if roles else 'sin roles' }}</span>
+          <a class="salir" href="{{ url_for('logout') }}">Salir</a>
+        </span>
+      {% else %}
+        <span class="version">front v7</span>
+      {% endif %}
+    </div>
+  </header>
+
+  <main class="contenedor">
+
+    {% with avisos = get_flashed_messages(with_categories=true) %}
+      {% for categoria, mensaje in avisos %}
+        <p class="aviso {{ categoria }}">{{ mensaje }}</p>
+      {% endfor %}
+    {% endwith %}
+
+    {% block contenido %}{% endblock %}
+
+  </main>
+
+  <footer class="contenedor">
+    <p>
+      Este front <strong>no toca la base de datos</strong>: todo lo pide a la
+      API. Si la API está caída, aquí no hay datos &mdash; y esa es la prueba
+      de que la separación es real.
+      <br>
+      Desde la v7 tampoco <strong>comprueba contraseñas</strong>: las manda a
+      la API y acata lo que responda.
+    </p>
+  </footer>
+
+</body>
+</html>
